@@ -1,45 +1,75 @@
-#genetic algorithm
-import random
-POPULATION_SIZE = 100
-GENE_LENGTH = 20
-MUTATION_RATE = 0.01
-GENERATIONS = 100
-def fitness(individual):
-    return sum(individual)
-def create_individual():
-    return [random.randint(0, 1) for _ in range(GENE_LENGTH)]
+import numpy as np
+import skfuzzy as fuzz
+import matplotlib.pyplot as plt
 
-def create_population():
-    return [create_individual() for _ in range(POPULATION_SIZE)]
-def select(population):
-    tournament = random.sample(population, 5)
-    return max(tournament, key=fitness)
-def crossover(parent1, parent2):
-    point = random.randint(1, GENE_LENGTH - 1)
-    child1 = parent1[:point] + parent2[point:]
-    child2 = parent2[:point] + parent1[point:]
-    return child1, child2
-def mutate(individual):
-    return [gene if random.random() > MUTATION_RATE else 1 - gene for gene in individual]
-def genetic_algorithm():
-    population = create_population()
-    for generation in range(GENERATIONS):
-        population = sorted(population, key=fitness, reverse=True)
+temp = np.arange(0, 41, 1)
+humidity = np.arange(0, 101, 1)
+fan_speed = np.arange(0, 11, 1)
+temp_low = fuzz.trimf(temp, [0, 0, 20])
+temp_medium = fuzz.trimf(temp, [0, 20, 40])
+temp_high = fuzz.trimf(temp, [20, 40, 40])
+humidity_low = fuzz.trimf(humidity, [0, 0, 50])
+humidity_medium = fuzz.trimf(humidity, [0, 50, 100])
+humidity_high = fuzz.trimf(humidity, [50, 100, 100])
+fan_slow = fuzz.trimf(fan_speed, [0, 0, 5])
+fan_medium = fuzz.trimf(fan_speed, [0, 5, 10])
+fan_fast = fuzz.trimf(fan_speed, [5, 10, 10])
+plt.figure(figsize=(10, 8))
 
-        new_population = population[:10]
+plt.subplot(3, 1, 1)
+plt.plot(temp, temp_low, label="Low Temp")
+plt.plot(temp, temp_medium, label="Medium Temp")
+plt.plot(temp, temp_high, label="High Temp")
+plt.title('Temperature Membership Functions')
+plt.legend()
 
-        while len(new_population) < POPULATION_SIZE:
-            parent1 = select(population)
-            parent2 = select(population)
-            child1, child2 = crossover(parent1, parent2)
-            new_population.extend([mutate(child1), mutate(child2)])
+plt.subplot(3, 1, 2)
+plt.plot(humidity, humidity_low, label="Low Humidity")
+plt.plot(humidity, humidity_medium, label="Medium Humidity")
+plt.plot(humidity, humidity_high, label="High Humidity")
+plt.title('Humidity Membership Functions')
+plt.legend()
 
-        population = new_population[:POPULATION_SIZE]
+plt.subplot(3, 1, 3)
+plt.plot(fan_speed, fan_slow, label="Slow Fan")
+plt.plot(fan_speed, fan_medium, label="Medium Fan")
+plt.plot(fan_speed, fan_fast, label="Fast Fan")
+plt.title('Fan Speed Membership Functions')
+plt.legend()
 
-        best_fitness = max(fitness(ind) for ind in population)
-        print(f"Generation {generation + 1}: Best Fitness = {best_fitness}")
+plt.tight_layout()
+plt.show()
+temperature_input = 25
+humidity_input = 60 )
+temp_level_low = fuzz.interp_membership(temp, temp_low, temperature_input)
+temp_level_medium = fuzz.interp_membership(temp, temp_medium, temperature_input)
+temp_level_high = fuzz.interp_membership(temp, temp_high, temperature_input)
 
-    best_individual = max(population, key=fitness)
-    print("Best Individual:", best_individual)
+humidity_level_low = fuzz.interp_membership(humidity, humidity_low, humidity_input)
+humidity_level_medium = fuzz.interp_membership(humidity, humidity_medium, humidity_input)
+humidity_level_high = fuzz.interp_membership(humidity, humidity_high, humidity_input)
 
-genetic_algorithm()
+rule1 = np.fmin(temp_level_high, humidity_level_high)
+fan_speed_output1 = np.fmin(rule1, fan_fast)
+
+rule2 = np.fmin(temp_level_medium, humidity_level_medium)
+fan_speed_output2 = np.fmin(rule2, fan_medium)
+
+rule3 = np.fmin(temp_level_low, humidity_level_low)
+fan_speed_output3 = np.fmin(rule3, fan_slow)
+
+aggregated = np.fmax(fan_speed_output1, np.fmax(fan_speed_output2, fan_speed_output3))
+
+fan_speed_crisp = fuzz.defuzz(fan_speed, aggregated, 'centroid')
+fan_speed_output = fuzz.interp_membership(fan_speed, aggregated, fan_speed_crisp)
+
+print(f"Fan Speed (crisp output): {fan_speed_crisp:.2f}")
+
+plt.figure(figsize=(6, 4))
+plt.plot(fan_speed, fan_slow, label="Slow Fan")
+plt.plot(fan_speed, fan_medium, label="Medium Fan")
+plt.plot(fan_speed, fan_fast, label="Fast Fan")
+plt.fill_between(fan_speed, 0, aggregated, color='gray', alpha=0.5, label="Aggregated Area")
+plt.title('Fan Speed Aggregation and Defuzzification')
+plt.legend()
+plt.show()
