@@ -1,0 +1,44 @@
+import random
+POPULATION_SIZE = 100
+GENE_LENGTH = 20
+MUTATION_RATE = 0.01
+GENERATIONS = 100
+def fitness(individual):
+    return sum(individual)
+def create_individual():
+    return [random.randint(0, 1) for _ in range(GENE_LENGTH)]
+
+def create_population():
+    return [create_individual() for _ in range(POPULATION_SIZE)]
+def select(population):
+    tournament = random.sample(population, 5)
+    return max(tournament, key=fitness)
+def crossover(parent1, parent2):
+    point = random.randint(1, GENE_LENGTH - 1)
+    child1 = parent1[:point] + parent2[point:]
+    child2 = parent2[:point] + parent1[point:]
+    return child1, child2
+def mutate(individual):
+    return [gene if random.random() > MUTATION_RATE else 1 - gene for gene in individual]
+def genetic_algorithm():
+    population = create_population()
+    for generation in range(GENERATIONS):
+        population = sorted(population, key=fitness, reverse=True)
+
+        new_population = population[:10]
+
+        while len(new_population) < POPULATION_SIZE:
+            parent1 = select(population)
+            parent2 = select(population)
+            child1, child2 = crossover(parent1, parent2)
+            new_population.extend([mutate(child1), mutate(child2)])
+
+        population = new_population[:POPULATION_SIZE]
+
+        best_fitness = max(fitness(ind) for ind in population)
+        print(f"Generation {generation + 1}: Best Fitness = {best_fitness}")
+
+    best_individual = max(population, key=fitness)
+    print("Best Individual:", best_individual)
+
+genetic_algorithm()
