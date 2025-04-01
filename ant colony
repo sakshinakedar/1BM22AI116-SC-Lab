@@ -1,0 +1,58 @@
+#ant colony
+import numpy as np, random
+class AntColony:
+    def __init__(s, d, a, i, α=1, β=2, e=0.5, Q=100):
+        s.d, s.p, s.a, s.i, s.α, s.β, s.e, s.Q, s.n = d, np.ones(d.shape)/len(d), a, i, α, β, e, Q, len(d)
+    def run(s):
+        b, l = None, float('inf')
+        for _ in range(s.i):
+            p, L = s.solve()
+            print("Paths:", p)
+            print("Lengths:", L)
+            s.update(p, L)
+            if min(L) < l: b, l = p[np.argmin(L)], min(L)
+        return b, l
+    def solve(s):
+        P, L = [], []
+        for _ in range(s.a):
+            p = s.path()
+            P.append(p), L.append(s.length(p))
+        return P, L
+    def path(s):
+        p = [random.randint(0, s.n - 1)]
+        while len(p) < s.n: p.append(s.next(p))
+        return p
+    def next(s, p):
+        c = p[-1]
+        probs = []
+        for n in range(s.n):
+            if n not in p:
+                prob = (s.p[c][n] ** s.α) * (1 / s.d[c][n]) ** s.β
+                probs.append((n, prob))
+
+        total = sum(pr for _, pr in probs)
+        r = random.random() * total
+        for n, pr in probs:
+            r -= pr
+            if r <= 0:
+                return n
+    def length(s, p): return sum(s.d[p[i-1]][p[i]] for i in range(1, len(p)))
+
+    def update(s, P, L):
+        s.p *= (1 - s.e)
+        for p, l in zip(P, L):
+            for i in range(len(p) - 1):
+                s.p[p[i]][p[i+1]] += s.Q / l
+                s.p[p[i+1]][p[i]] += s.Q / l
+
+distances = np.array([
+    [0, 10, 15, 20],
+    [10, 0, 35, 25],
+    [15, 35, 0, 30],
+    [20, 25, 30, 0]
+])
+
+aco = AntColony(distances, a=5, i=100)
+best_path, best_length = aco.run()
+print("Best path:", best_path)
+print("Best length:", best_length)
