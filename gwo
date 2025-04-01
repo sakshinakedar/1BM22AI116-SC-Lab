@@ -1,45 +1,56 @@
+#grey wolf
 import numpy as np
-def objective_function(x):
-    """Example objective function: Rosenbrock function."""
-    return sum(100.0 * (x[1:] - x[:-1]**2.0)**2.0 + (1 - x[:-1])**2.0)
-class Particle:
-    def __init__(self, dimension, bounds):
-        self.position = np.random.uniform(bounds[:, 0], bounds[:, 1], dimension)
-        self.velocity = np.random.uniform(-1, 1, dimension)
-        self.best_position = np.copy(self.position)
-        self.best_score = objective_function(self.position)
-    def update_velocity(self, global_best_position, inertia_weight, cognitive_coeff, social_coeff):
-        r1, r2 = np.random.rand(len(self.position)), np.random.rand(len(self.position))
-        cognitive = cognitive_coeff * r1 * (self.best_position - self.position)
-        social = social_coeff * r2 * (global_best_position - self.position)
-        self.velocity = inertia_weight * self.velocity + cognitive + social
-    def update_position(self, bounds):
-        self.position += self.velocity
-        self.position = np.clip(self.position, bounds[:, 0], bounds[:, 1])
-        score = objective_function(self.position)
-        if score < self.best_score:
-            self.best_score = score
-            self.best_position = np.copy(self.position)
-class PSO:
-    def __init__(self, num_particles, dimension, bounds, max_iter):
-        self.particles = [Particle(dimension, bounds) for _ in range(num_particles)]
-        self.global_best_position = min(self.particles, key=lambda p: p.best_score).best_position
-        self.global_best_score = objective_function(self.global_best_position)
-        self.max_iter = max_iter
 
-    def optimize(self, inertia_weight=0.7, cognitive_coeff=1.5, social_coeff=1.5):
-        for _ in range(self.max_iter):
-            for particle in self.particles:
-                particle.update_velocity(self.global_best_position, inertia_weight, cognitive_coeff, social_coeff)
-                particle.update_position(bounds)
-                if particle.best_score < self.global_best_score:
-                    self.global_best_score = particle.best_score
-                    self.global_best_position = particle.best_position
-        return self.global_best_position, self.global_best_score
+def objective_function(x):
+    return sum(100.0 * (x[1:] - x[:-1]**2.0)**2.0 + (1 - x[:-1])**2.0)
+
+class GreyWolfOptimizer:
+    def __init__(self, num_wolves, dimension, bounds, max_iter):
+        self.num_wolves = num_wolves
+        self.dimension = dimension
+        self.bounds = bounds
+        self.max_iter = max_iter
+        self.wolves = np.random.uniform(bounds[:, 0], bounds[:, 1], (num_wolves, dimension))
+        self.scores = np.apply_along_axis(objective_function, 1, self.wolves)
+        self.alpha, self.beta, self.delta = self.get_best_wolves()
+
+    def get_best_wolves(self):
+        sorted_indices = np.argsort(self.scores)
+        return self.wolves[sorted_indices[:3]]
+
+    def optimize(self):
+        for iteration in range(self.max_iter):
+            a = 2 - iteration * (2 / self.max_iter)
+            for i in range(self.num_wolves):
+                A1, A2, A3 = a * (2 * np.random.rand(self.dimension) - 1), a * (2 * np.random.rand(self.dimension) - 1), a * (2 * np.random.rand(self.dimension) - 1)
+                C1, C2, C3 = 2 * np.random.rand(self.dimension), 2 * np.random.rand(self.dimension), 2 * np.random.rand(self.dimension)
+
+                D_alpha = abs(C1 * self.alpha - self.wolves[i])
+                D_beta = abs(C2 * self.beta - self.wolves[i])
+                D_delta = abs(C3 * self.delta - self.wolves[i])
+
+                X1 = self.alpha - A1 * D_alpha
+                X2 = self.beta - A2 * D_beta
+                X3 = self.delta - A3 * D_delta
+
+                self.wolves[i] = (X1 + X2 + X3) / 3
+                self.wolves[i] = np.clip(self.wolves[i], self.bounds[:, 0], self.bounds[:, 1])
+
+            self.scores = np.apply_along_axis(objective_function, 1, self.wolves)
+            self.alpha, self.beta, self.delta = self.get_best_wolves()
+
+            print(f"Iteration {iteration+1}/{self.max_iter}, Best Score: {objective_function(self.alpha)}")
+
+        return self.alpha, objective_function(self.alpha)
+
 if __name__ == "__main__":
     dimension = 2
     bounds = np.array([[-2, 2], [-2, 2]])
-    pso = PSO(num_particles=30, dimension=dimension, bounds=bounds, max_iter=100)
-    best_position, best_score = pso.optimize()
-    print("Best Position:", best_position)
-    print("Best Score:", best_score)
+    gwo = GreyWolfOptimizer(num_wolves=5, dimension=dimension, bounds=bounds, max_iter=10)
+
+    # Run optimization
+    best_position, best_score = gwo.optimize()
+
+    # Output results
+    print("\nFinal Best Position:", best_position)
+    print("Final Best Score:", best_score)
